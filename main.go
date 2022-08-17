@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mdp/qrterminal/v3"
@@ -63,15 +62,22 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	sendMessage(myClient, jid, "Test message")
 
-	// Listen to Ctrl+C (you can also do something else that prevents the program from exiting)
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
+	dateTicker := time.NewTicker(10 * time.Second)
+	for {
+		select {
+		case <-dateTicker.C:
+			sendMessage(myClient, jid, "Test message")
+		}
+	}
 
-	// Disconnect the client
-	myClient.WAClient.Disconnect()
+	// // Listen to Ctrl+C (you can also do something else that prevents the program from exiting)
+	// c := make(chan os.Signal)
+	// signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	// <-c
+	//
+	// // Disconnect the client
+	// myClient.WAClient.Disconnect()
 }
 
 func sendMessage(myClient *WrappedClient, recipientJid types.JID, message string) {
