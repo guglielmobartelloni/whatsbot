@@ -19,16 +19,16 @@ import (
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
-type MyClient struct {
+type WrappedClient struct {
 	WAClient       *whatsmeow.Client
 	eventHandlerID uint32
 }
 
-func (mycli *MyClient) register() {
-	mycli.eventHandlerID = mycli.WAClient.AddEventHandler(mycli.myEventHandler)
+func (wrappedClient *WrappedClient) register() {
+	wrappedClient.eventHandlerID = wrappedClient.WAClient.AddEventHandler(wrappedClient.myEventHandler)
 }
 
-func (mycli *MyClient) myEventHandler(evt interface{}) {
+func (wrappedClient *WrappedClient) myEventHandler(evt interface{}) {
 	// Handle event and access mycli.WAClient
 	switch v := evt.(type) {
 	case *events.Message:
@@ -52,7 +52,7 @@ func main() {
 	}
 	clientLog := waLog.Stdout("Client", "DEBUG", true)
 	client := whatsmeow.NewClient(deviceStore, clientLog)
-	myClient := &MyClient{
+	myClient := &WrappedClient{
 		WAClient: client,
 	}
 	myClient.register()
