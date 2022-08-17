@@ -9,17 +9,34 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mdp/qrterminal/v3"
+	"google.golang.org/protobuf/proto"
 
 	"go.mau.fi/whatsmeow"
+	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
-func eventHandler(evt interface{}) {
+type MyClient struct {
+	WAClient       *whatsmeow.Client
+	eventHandlerID uint32
+}
+
+func (mycli *MyClient) register() {
+	mycli.eventHandlerID = mycli.WAClient.AddEventHandler(mycli.myEventHandler)
+}
+
+func (mycli *MyClient) myEventHandler(evt interface{}) {
+	// Handle event and access mycli.WAClient
 	switch v := evt.(type) {
 	case *events.Message:
-		fmt.Println("Received a message!", v.Message.GetConversation())
+		fmt.Println("Received a message: ", v.Message.GetConversation())
+		fmt.Println("JID: ", v.Info.Sender)
+		mycli.WAClient.SendMessage(context.Background(), v.Info.Sender, "", &waProto.Message{
+			Conversation: proto.String("Hello, World!"),
+		})
+
 	}
 }
 
@@ -37,11 +54,14 @@ func main() {
 	}
 	clientLog := waLog.Stdout("Client", "DEBUG", true)
 	client := whatsmeow.NewClient(deviceStore, clientLog)
-	client.AddEventHandler(eventHandler)
+	myClient := &MyClient{
+		WAClient: client,
+	}
+	myClient.register()
 
-	if client.Store.ID == nil {
+	if myClient.WAClient.Store.ID == nil {
 		// No ID stored, new login
-		qrChan, _ := client.GetQRChannel(context.Background())
+		qrChan, _ := myClient.WAClient.GetQRChannel(context.Background())
 		err = client.Connect()
 		if err != nil {
 			panic(err)
@@ -57,7 +77,7 @@ func main() {
 		}
 	} else {
 		// Already logged in, just connect
-		err = client.Connect()
+		err = myClient.WAClient.Connect()
 		if err != nil {
 			panic(err)
 		}
