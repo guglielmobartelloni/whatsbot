@@ -56,11 +56,37 @@ func main() {
 		WAClient: client,
 	}
 	myClient.register()
+	connectToWhatsapp(myClient)
+
+	// Takes the recipient from the environment variable RECIPIENT
+	jid, err := types.ParseJID(os.Getenv("RECIPIENT"))
+	if err != nil {
+		panic(err)
+	}
+	sendMessage(myClient, jid, "Test message")
+
+	// Listen to Ctrl+C (you can also do something else that prevents the program from exiting)
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	<-c
+
+	// Disconnect the client
+	myClient.WAClient.Disconnect()
+}
+
+func sendMessage(myClient *WrappedClient, jid types.JID, message string) {
+	myClient.WAClient.SendMessage(context.Background(), jid, "", &waProto.Message{
+		Conversation: proto.String(message),
+	})
+
+}
+
+func connectToWhatsapp(myClient *WrappedClient) {
 
 	if myClient.WAClient.Store.ID == nil {
 		// No ID stored, new login
 		qrChan, _ := myClient.WAClient.GetQRChannel(context.Background())
-		err = client.Connect()
+		err := myClient.WAClient.Connect()
 		if err != nil {
 			panic(err)
 		}
@@ -75,25 +101,10 @@ func main() {
 		}
 	} else {
 		// Already logged in, just connect
-		err = myClient.WAClient.Connect()
+		err := myClient.WAClient.Connect()
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	jid, err := types.ParseJID(os.Getenv("RECIPIENT"))
-	if err != nil {
-		panic(err)
-	}
-	myClient.WAClient.SendMessage(context.Background(), jid, "", &waProto.Message{
-		Conversation: proto.String("Hello, World!"),
-	})
-
-	// Listen to Ctrl+C (you can also do something else that prevents the program from exiting)
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
-
-	// Disconnect the client
-	myClient.WAClient.Disconnect()
 }
