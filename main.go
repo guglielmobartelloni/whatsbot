@@ -14,6 +14,7 @@ import (
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/store/sqlstore"
+	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
@@ -33,9 +34,6 @@ func (mycli *MyClient) myEventHandler(evt interface{}) {
 	case *events.Message:
 		fmt.Println("Received a message: ", v.Message.GetConversation())
 		fmt.Println("JID: ", v.Info.Sender)
-		mycli.WAClient.SendMessage(context.Background(), v.Info.Sender, "", &waProto.Message{
-			Conversation: proto.String("Hello, World!"),
-		})
 
 	}
 }
@@ -83,6 +81,13 @@ func main() {
 		}
 	}
 
+	jid, err := types.ParseJID(os.Getenv("RECIPIENT"))
+	if err != nil {
+		panic(err)
+	}
+	myClient.WAClient.SendMessage(context.Background(), jid, "", &waProto.Message{
+		Conversation: proto.String("Hello, World!"),
+	})
 	// Listen to Ctrl+C (you can also do something else that prevents the program from exiting)
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
