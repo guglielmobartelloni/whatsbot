@@ -74,8 +74,8 @@ func main() {
 	myClient.WAClient.Disconnect()
 }
 
-func sendMessage(myClient *WrappedClient, jid types.JID, message string) {
-	myClient.WAClient.SendMessage(context.Background(), jid, "", &waProto.Message{
+func sendMessage(myClient *WrappedClient, recipientJid types.JID, message string) {
+	myClient.WAClient.SendMessage(context.Background(), recipientJid, "", &waProto.Message{
 		Conversation: proto.String(message),
 	})
 
