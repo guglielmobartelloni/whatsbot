@@ -63,7 +63,8 @@ func main() {
 		panic(err)
 	}
 
-	dateTicker := time.NewTicker(10 * time.Second)
+	sendMessage(myClient, jid, "Test message")
+	dateTicker := time.NewTicker(24 * time.Hour)
 	for {
 		select {
 		case <-dateTicker.C:
