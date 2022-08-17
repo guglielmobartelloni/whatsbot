@@ -88,10 +88,12 @@ func main() {
 	myClient.WAClient.SendMessage(context.Background(), jid, "", &waProto.Message{
 		Conversation: proto.String("Hello, World!"),
 	})
+
 	// Listen to Ctrl+C (you can also do something else that prevents the program from exiting)
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 
-	client.Disconnect()
+	// Disconnect the client
+	myClient.WAClient.Disconnect()
 }
