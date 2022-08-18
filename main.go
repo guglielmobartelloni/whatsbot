@@ -41,6 +41,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	connectToWhatsapp(myClient)
 
 	jid, err := types.ParseJID(r.URL.Query().Get("JID"))
+	fmt.Println("JID = ", jid)
 	message := r.URL.Query().Get("message")
 	// Takes the recipient from the environment variable RECIPIENT
 	if err != nil {
