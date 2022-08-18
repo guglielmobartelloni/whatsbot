@@ -40,12 +40,13 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	myClient.register()
 	connectToWhatsapp(myClient)
 
-	jid, err := types.ParseJID(r.URL.Query().Get("JID"))
-	message := r.URL.Query().Get("message")
+	jid, err := types.ParseJID(r.FormValue("JID"))
+	message := r.FormValue("message")
 	// Takes the recipient from the environment variable RECIPIENT
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("JID: ", jid, " message: ", message)
 	sendMessage(myClient, jid, message)
 }
 
@@ -70,7 +71,7 @@ func (wrappedClient *WrappedClient) myEventHandler(evt interface{}) {
 
 func main() {
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/", handleRequest)
+	router.HandleFunc("/", handleRequest).Methods("POST")
 	log.Fatal(http.ListenAndServe(":8081", router))
 }
 
