@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
-	"time"
 
+	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mdp/qrterminal/v3"
 	"google.golang.org/protobuf/proto"
@@ -17,6 +19,35 @@ import (
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
+
+func handleRequest(w http.ResponseWriter, r *http.Request) {
+	dbLog := waLog.Stdout("Database", "DEBUG", true)
+	// Make sure you add appropriate DB connector imports, e.g. github.com/mattn/go-sqlite3 for SQLite
+	container, err := sqlstore.New("sqlite3", "file:examplestore.db?_foreign_keys=on", dbLog)
+	if err != nil {
+		panic(err)
+	}
+	// If you want multiple sessions, remember their JIDs and use .GetDevice(jid) or .GetAllDevices() instead.
+	deviceStore, err := container.GetFirstDevice()
+	if err != nil {
+		panic(err)
+	}
+	clientLog := waLog.Stdout("Client", "DEBUG", true)
+	client := whatsmeow.NewClient(deviceStore, clientLog)
+	myClient := &WrappedClient{
+		WAClient: client,
+	}
+	myClient.register()
+	connectToWhatsapp(myClient)
+
+	jid, err := types.ParseJID(r.URL.Query().Get("JID"))
+	message := r.URL.Query().Get("message")
+	// Takes the recipient from the environment variable RECIPIENT
+	if err != nil {
+		panic(err)
+	}
+	sendMessage(myClient, jid, message)
+}
 
 type WrappedClient struct {
 	WAClient       *whatsmeow.Client
@@ -38,47 +69,9 @@ func (wrappedClient *WrappedClient) myEventHandler(evt interface{}) {
 }
 
 func main() {
-	dbLog := waLog.Stdout("Database", "DEBUG", true)
-	// Make sure you add appropriate DB connector imports, e.g. github.com/mattn/go-sqlite3 for SQLite
-	container, err := sqlstore.New("sqlite3", "file:examplestore.db?_foreign_keys=on", dbLog)
-	if err != nil {
-		panic(err)
-	}
-	// If you want multiple sessions, remember their JIDs and use .GetDevice(jid) or .GetAllDevices() instead.
-	deviceStore, err := container.GetFirstDevice()
-	if err != nil {
-		panic(err)
-	}
-	clientLog := waLog.Stdout("Client", "DEBUG", true)
-	client := whatsmeow.NewClient(deviceStore, clientLog)
-	myClient := &WrappedClient{
-		WAClient: client,
-	}
-	myClient.register()
-	connectToWhatsapp(myClient)
-
-	// Takes the recipient from the environment variable RECIPIENT
-	jid, err := types.ParseJID(os.Getenv("RECIPIENT"))
-	if err != nil {
-		panic(err)
-	}
-
-	sendMessage(myClient, jid, "Test message")
-	dateTicker := time.NewTicker(24 * time.Hour)
-	for {
-		select {
-		case <-dateTicker.C:
-			sendMessage(myClient, jid, "Test message")
-		}
-	}
-
-	// // Listen to Ctrl+C (you can also do something else that prevents the program from exiting)
-	// c := make(chan os.Signal)
-	// signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	// <-c
-	//
-	// // Disconnect the client
-	// myClient.WAClient.Disconnect()
+	router := mux.NewRouter().StrictSlash(true)
+	router.HandleFunc("/", handleRequest)
+	log.Fatal(http.ListenAndServe(":8081", router))
 }
 
 func sendMessage(myClient *WrappedClient, recipientJid types.JID, message string) {
